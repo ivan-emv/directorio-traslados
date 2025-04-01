@@ -24,9 +24,13 @@ if st.session_state["limpiar"]:
     st.session_state["edit_data"] = None
     st.session_state["num_telefonos"] = 1
     st.session_state["limpiar"] = False
-    for i in range(5):
-        st.session_state.pop(f"titulo_{i}", None)
-        st.session_state.pop(f"numero_{i}", None)
+
+    # Limpiar campos del formulario
+    for key in list(st.session_state.keys()):
+        if key.startswith("titulo_") or key.startswith("numero_") or key in [
+            "Ciudad", "Proveedor", "PuntoEncuentro", "NombrePuntoLlegada", "OtroLlegada"
+        ]:
+            del st.session_state[key]
 
 # Inicializar Firebase
 db = init_firestore()
@@ -52,22 +56,26 @@ with col_izq:
     edit_data = st.session_state["edit_data"]
     modo = st.session_state["modo"]
 
-    ciudad = st.text_input("Ciudad", value=edit_data.get("ciudad", "") if edit_data else "")
+    ciudad = st.text_input("Ciudad", value=edit_data.get("ciudad", "") if edit_data else "", key="Ciudad")
 
     llegada_opciones = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
     llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(edit_data["punto_llegada"]) if edit_data else 0)
 
-    nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "")
+    if llegada in ["Aeropuerto", "Estación de Tren", "Puerto"]:
+        nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "", key="NombrePuntoLlegada")
+    else:
+        nombre_punto_llegada = ""
 
-    otro_llegada = ""
     if llegada == "Otros":
-        otro_llegada = st.text_input("Otro (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "")
+        otro_llegada = st.text_input("Otros (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "", key="OtroLlegada")
+    else:
+        otro_llegada = ""
 
-    proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "")
+    proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "", key="Proveedor")
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
-    # Ajustar número de teléfonos en edición
+    # Ajustar número de teléfonos según datos de edición
     if modo == "edit" and edit_data:
         total_existentes = len(edit_data["telefonos"])
         st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
@@ -87,20 +95,20 @@ with col_izq:
         if st.button("➕ Agregar otro número"):
             st.session_state["num_telefonos"] += 1
 
-    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "")
+    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "", key="PuntoEncuentro")
 
     col_guardar, col_limpiar = st.columns(2)
 
     with col_guardar:
         if st.button("💾 Guardar Punto"):
-            if not ciudad or not proveedor or not punto_encuentro or not nombre_punto_llegada:
+            if not ciudad or not proveedor or not punto_encuentro or (llegada != "Otros" and not nombre_punto_llegada):
                 st.warning("Por favor, completa todos los campos obligatorios.")
             else:
                 data = {
                     "ciudad": ciudad,
                     "punto_llegada": llegada,
                     "nombre_punto_llegada": nombre_punto_llegada,
-                    "otro_llegada": otro_llegada if llegada == "Otros" else "",
+                    "otro_llegada": otro_llegada,
                     "proveedor": proveedor,
                     "telefonos": telefonos,
                     "punto_encuentro": punto_encuentro,
