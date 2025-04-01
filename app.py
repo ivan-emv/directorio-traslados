@@ -76,7 +76,7 @@ with col_izq:
             # Resetear modo
             st.session_state["modo"] = "nuevo"
             st.session_state["edit_data"] = None
-            st.experimental_set_query_params(saved="true")
+            st.query_params["saved"] = "true"
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
