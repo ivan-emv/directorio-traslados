@@ -1,17 +1,21 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import streamlit as st
-import json
-from ast import literal_eval
+import base64
+import tempfile
 
 @st.cache_resource
 def init_firestore():
-    # Interpretar el contenido de los secrets como diccionario
-    firebase_key = literal_eval(st.secrets["FIREBASE_CREDENTIALS"])
-    cred = credentials.Certificate(firebase_key)
+    # Leer la clave codificada en base64 desde secrets
+    encoded = st.secrets["FIREBASE_BASE64"]
+    decoded = base64.b64decode(encoded)
+
+    # Crear archivo temporal para que Firebase lo use
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
+        f.write(decoded)
+        cred = credentials.Certificate(f.name)
 
     if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
 
-    db = firestore.client()
-    return db
+    return firestore.client()
