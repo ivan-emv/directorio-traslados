@@ -26,13 +26,12 @@ if st.session_state["puntos"] is None:
     raw_docs = [{"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()]
     st.session_state["puntos"] = raw_docs
 
-    # Depuración visual
+    # 🔎 Depuración visual de documentos
     st.markdown("### 🧪 Debug: Documentos en Firebase")
     for item in raw_docs:
         st.json(item)
-    ]
 
-puntos = [p for p in st.session_state["puntos"] if p]  # Solo eliminamos los None reales
+puntos = [p for p in st.session_state["puntos"] if p]
 ciudades_disponibles = sorted(set(p.get("ciudad", "") for p in puntos if "ciudad" in p))
 
 # Layout principal
@@ -150,7 +149,7 @@ with col_der:
 
     filtro = [p for p in puntos if p and "ciudad" in p]
     if st.session_state["ciudad_filtro"] != "Todas":
-        filtro = [p for p in filtro if p["ciudad"] == st.session_state["ciudad_filtro"]]
+        filtro = [p for p in filtro if p.get("ciudad") == st.session_state["ciudad_filtro"]]
 
     for punto in filtro:
         if not all(k in punto for k in ["ciudad", "punto_llegada", "proveedor", "punto_encuentro", "telefonos"]):
