@@ -44,7 +44,7 @@ if st.session_state["puntos"] is None:
     st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs]
 
 puntos = st.session_state["puntos"]
-ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
+ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if p and "ciudad" in p))
 
 # Layout 40/60
 col_izq, col_der = st.columns([0.4, 0.6])
