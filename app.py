@@ -23,19 +23,20 @@ db = init_firestore()
 # Cargar datos si no están cacheados
 if st.session_state["puntos"] is None:
     docs = db.collection("puntos_de_encuentro").stream()
-    st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    st.session_state["puntos"] = [
+        {"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()
+    ]
 
-puntos = st.session_state["puntos"]
+puntos = [p for p in st.session_state["puntos"] if p and "ciudad" in p]
 ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if p and "ciudad" in p))
 
 # Layout principal
 col_izq, col_der = st.columns([0.4, 0.6])
 
-# ------------------ FORMULARIO (Columna Izquierda) ------------------
+# ------------------ FORMULARIO ------------------
 with col_izq:
     st.subheader("📋 Punto de Encuentro")
 
-    # Definir claves de campos
     campo_keys = {
         "ciudad": "ciudad_input",
         "proveedor": "proveedor_input",
@@ -44,7 +45,6 @@ with col_izq:
         "punto_encuentro": "punto_encuentro_input",
     }
 
-    # Limpiar si el flag está activo
     if st.session_state["limpiar_formulario"]:
         for key in campo_keys.values():
             st.session_state[key] = ""
@@ -139,21 +139,24 @@ with col_izq:
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ------------------ COLUMNA DERECHA ------------------
+# ------------------ LISTADO ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
-    filtro = puntos if st.session_state["ciudad_filtro"] == "Todas" else [
-        p for p in puntos if p["ciudad"] == st.session_state["ciudad_filtro"]
-    ]
+    filtro = [p for p in puntos if p and "ciudad" in p]
+    if st.session_state["ciudad_filtro"] != "Todas":
+        filtro = [p for p in filtro if p["ciudad"] == st.session_state["ciudad_filtro"]]
 
     for punto in filtro:
+        if not all(k in punto for k in ["ciudad", "punto_llegada", "proveedor", "punto_encuentro", "telefonos"]):
+            continue
+
         with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} - {punto.get('nombre_punto_llegada', '')}"):
             st.markdown(f"**Proveedor:** {punto['proveedor']}")
             st.markdown(f"**Punto de Encuentro:** {punto['punto_encuentro']}")
             st.markdown("**Teléfonos de Contacto:**")
             for tel in punto["telefonos"]:
-                st.markdown(f"- **{tel['titulo']}**: {tel['numero']}")
+                st.markdown(f"- **{tel.get('titulo','')}**: {tel.get('numero','')}")
 
             col1, col2 = st.columns(2)
             with col1:
