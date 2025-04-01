@@ -6,14 +6,16 @@ import uuid
 # Configuración inicial
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
-# Inicializar sesión
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos"]:
+# Inicializar variables de sesión
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "limpiar_formulario"]:
     if key not in st.session_state:
         st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 if "puntos" not in st.session_state:
     st.session_state["puntos"] = None
 if "num_telefonos" not in st.session_state:
     st.session_state["num_telefonos"] = 1
+if "limpiar_formulario" not in st.session_state:
+    st.session_state["limpiar_formulario"] = False
 
 # Inicializar Firebase
 db = init_firestore()
@@ -30,16 +32,10 @@ ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 col_izq, col_der = st.columns([0.4, 0.6])
 
 # ------------------ FORMULARIO (Columna Izquierda) ------------------
-    st.markdown("---")
-    st.subheader("🔎 Buscar por Ciudad")
-    st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 with col_izq:
     st.subheader("📋 Punto de Encuentro")
 
-    edit_data = st.session_state["edit_data"]
-    modo = st.session_state["modo"]
-
-    # Variables y claves de formulario
+    # Definir claves de campos
     campo_keys = {
         "ciudad": "ciudad_input",
         "proveedor": "proveedor_input",
@@ -47,6 +43,21 @@ with col_izq:
         "otro_llegada": "otro_llegada_input",
         "punto_encuentro": "punto_encuentro_input",
     }
+
+    # Limpiar si el flag está activo
+    if st.session_state["limpiar_formulario"]:
+        for key in campo_keys.values():
+            st.session_state[key] = ""
+        for i in range(5):
+            st.session_state[f"titulo_{i}"] = ""
+            st.session_state[f"numero_{i}"] = ""
+        st.session_state["num_telefonos"] = 1
+        st.session_state["edit_data"] = None
+        st.session_state["modo"] = "nuevo"
+        st.session_state["limpiar_formulario"] = False
+
+    edit_data = st.session_state["edit_data"]
+    modo = st.session_state["modo"]
 
     ciudad = st.text_input("Ciudad", value=edit_data.get("ciudad", "") if edit_data else "", key=campo_keys["ciudad"])
 
@@ -66,7 +77,6 @@ with col_izq:
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
-    # En modo edición: ajustar número de campos
     if modo == "edit" and edit_data:
         st.session_state["num_telefonos"] = len(edit_data["telefonos"]) or 1
 
@@ -119,32 +129,17 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                # Limpiar automáticamente
-                for k in campo_keys.values():
-                    st.session_state[k] = ""
-                for i in range(5):
-                    st.session_state[f"titulo_{i}"] = ""
-                    st.session_state[f"numero_{i}"] = ""
-                st.session_state["num_telefonos"] = 1
-                st.session_state["edit_data"] = None
-                st.session_state["modo"] = "nuevo"
+                st.session_state["limpiar_formulario"] = True
 
     with col_limpiar:
         if st.button("🧹 Limpiar Formulario"):
-            for k in campo_keys.values():
-                st.session_state[k] = ""
-            for i in range(5):
-                st.session_state[f"titulo_{i}"] = ""
-                st.session_state[f"numero_{i}"] = ""
-            st.session_state["num_telefonos"] = 1
-            st.session_state["edit_data"] = None
-            st.session_state["modo"] = "nuevo"
+            st.session_state["limpiar_formulario"] = True
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ------------------ VISUALIZACIÓN (Columna Derecha) ------------------
+# ------------------ COLUMNA DERECHA ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
