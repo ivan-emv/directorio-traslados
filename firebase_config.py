@@ -6,11 +6,9 @@ import tempfile
 
 @st.cache_resource
 def init_firestore():
-    # Leer la clave codificada en base64 desde secrets
     encoded = st.secrets["FIREBASE_BASE64"]
     decoded = base64.b64decode(encoded)
 
-    # Crear archivo temporal para que Firebase lo use
     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
         f.write(decoded)
         cred = credentials.Certificate(f.name)
