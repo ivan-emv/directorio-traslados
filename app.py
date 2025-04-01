@@ -3,12 +3,13 @@ from firebase_config import init_firestore
 from datetime import datetime
 import uuid
 
+# ✅ Obligatorio: debe ser el primer comando Streamlit
+st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
+
 # Inicializar conexión con Firebase
 db = init_firestore()
 
-st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
-
 st.markdown("---")
 
 # ------------------ Función para guardar ------------------ #
@@ -20,7 +21,6 @@ def guardar_punto(data, edit_id=None):
 
 # ------------------ Formulario de Registro ------------------ #
 with st.expander("➕ Agregar / Editar Punto de Encuentro", expanded=False):
-    ciudades = ["Madrid", "Barcelona", "París", "Roma", "Otro..."]
     ciudad = st.text_input("Ciudad", placeholder="Ej: Madrid")
 
     opciones_llegada = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
@@ -60,7 +60,7 @@ with st.expander("➕ Agregar / Editar Punto de Encuentro", expanded=False):
                 "fecha_actualizacion": datetime.utcnow().isoformat()
             }
             guardar_punto(data, edit_id)
-            st.success("Punto de encuentro guardado exitosamente.")
+            st.success("✅ Punto de encuentro guardado exitosamente.")
             st.session_state["edit_id"] = None
             st.experimental_rerun()
 
@@ -93,6 +93,5 @@ for punto in filtro:
         with col2:
             if st.button("🗑️ Eliminar", key=f"delete_{punto['id']}"):
                 db.collection("puntos_de_encuentro").document(punto["id"]).delete()
-                st.success("Punto eliminado correctamente.")
+                st.success("✅ Punto eliminado correctamente.")
                 st.experimental_rerun()
-
