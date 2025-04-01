@@ -27,8 +27,8 @@ if st.session_state["puntos"] is None:
         {"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()
     ]
 
-puntos = [p for p in st.session_state["puntos"] if p and "ciudad" in p]
-ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if p and "ciudad" in p))
+puntos = [p for p in st.session_state["puntos"] if p]  # Solo eliminamos los None reales
+ciudades_disponibles = sorted(set(p.get("ciudad", "") for p in puntos if "ciudad" in p))
 
 # Layout principal
 col_izq, col_der = st.columns([0.4, 0.6])
