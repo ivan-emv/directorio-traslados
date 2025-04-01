@@ -7,23 +7,26 @@ import uuid
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
 # Inicializar variables de sesión
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos"]:
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "limpiar"]:
     if key not in st.session_state:
         if key == "puntos":
-            st.session_state["puntos"] = None
+            st.session_state[key] = None
         elif key == "num_telefonos":
-            st.session_state["num_telefonos"] = 1
+            st.session_state[key] = 1
+        elif key == "limpiar":
+            st.session_state[key] = False
         else:
             st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 
-# Función para limpiar el formulario
-def limpiar_formulario():
+# Si se activó el flag de limpiar, reiniciar valores
+if st.session_state["limpiar"]:
     st.session_state["modo"] = "nuevo"
     st.session_state["edit_data"] = None
     st.session_state["num_telefonos"] = 1
     for i in range(5):
-        st.session_state[f"titulo_{i}"] = ""
-        st.session_state[f"numero_{i}"] = ""
+        st.session_state.pop(f"titulo_{i}", None)
+        st.session_state.pop(f"numero_{i}", None)
+    st.session_state["limpiar"] = False
 
 # Inicializar Firebase
 db = init_firestore()
@@ -80,7 +83,6 @@ with col_izq:
         if titulo or numero:
             telefonos.append({"titulo": titulo, "numero": numero})
 
-    # Botón para agregar más teléfonos (hasta 5)
     if st.session_state["num_telefonos"] < 5:
         if st.button("➕ Agregar otro número"):
             st.session_state["num_telefonos"] += 1
@@ -119,11 +121,14 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                limpiar_formulario()
+                # Limpiar luego de guardar
+                st.session_state["limpiar"] = True
+                st.experimental_rerun()
 
     with col_limpiar:
         if st.button("🧹 Limpiar Formulario"):
-            limpiar_formulario()
+            st.session_state["limpiar"] = True
+            st.experimental_rerun()
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
