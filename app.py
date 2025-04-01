@@ -6,28 +6,14 @@ import uuid
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
 # Inicializar sesión
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "limpiar"]:
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos"]:
     if key not in st.session_state:
         if key == "puntos":
             st.session_state[key] = None
         elif key == "num_telefonos":
             st.session_state[key] = 1
-        elif key == "limpiar":
-            st.session_state[key] = False
         else:
             st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
-
-# Limpiar formulario
-if st.session_state["limpiar"]:
-    st.session_state["modo"] = "nuevo"
-    st.session_state["edit_data"] = None
-    st.session_state["num_telefonos"] = 1
-    st.session_state["limpiar"] = False
-    for key in list(st.session_state.keys()):
-        if key.startswith("titulo_") or key.startswith("numero_") or key in [
-            "Ciudad", "Proveedor", "PuntoEncuentro", "NombrePuntoLlegada", "OtroLlegada"
-        ]:
-            del st.session_state[key]
 
 # Inicializar Firebase
 db = init_firestore()
@@ -42,6 +28,10 @@ if st.session_state["puntos"] is None:
 
 puntos = st.session_state["puntos"]
 ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if isinstance(p, dict) and "ciudad" in p))
+
+# Selector de Ciudad en la parte superior
+st.subheader("🔎 Buscar por Ciudad")
+st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
 # Layout principal
 col_izq, col_der = st.columns([0.4, 0.6])
@@ -91,52 +81,40 @@ with col_izq:
 
     punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "", key="PuntoEncuentro")
 
-    col_guardar, col_limpiar = st.columns(2)
+    if st.button("💾 Guardar Punto"):
+        if not ciudad or not proveedor or not punto_encuentro or (llegada != "Otros" and not nombre_punto_llegada):
+            st.warning("Por favor, completa todos los campos obligatorios.")
+        else:
+            data = {
+                "ciudad": ciudad,
+                "punto_llegada": llegada,
+                "nombre_punto_llegada": nombre_punto_llegada,
+                "otro_llegada": otro_llegada,
+                "proveedor": proveedor,
+                "telefonos": telefonos,
+                "punto_encuentro": punto_encuentro,
+                "fecha_actualizacion": datetime.utcnow().isoformat()
+            }
 
-    with col_guardar:
-        if st.button("💾 Guardar Punto"):
-            if not ciudad or not proveedor or not punto_encuentro or (llegada != "Otros" and not nombre_punto_llegada):
-                st.warning("Por favor, completa todos los campos obligatorios.")
+            if modo == "edit" and edit_data:
+                doc_id = edit_data["id"]
+                db.collection("puntos_de_encuentro").document(doc_id).set(data)
+                for i, p in enumerate(st.session_state["puntos"]):
+                    if p["id"] == doc_id:
+                        st.session_state["puntos"][i] = {"id": doc_id, **data}
+                        break
+                st.success("✅ Punto actualizado.")
             else:
-                data = {
-                    "ciudad": ciudad,
-                    "punto_llegada": llegada,
-                    "nombre_punto_llegada": nombre_punto_llegada,
-                    "otro_llegada": otro_llegada,
-                    "proveedor": proveedor,
-                    "telefonos": telefonos,
-                    "punto_encuentro": punto_encuentro,
-                    "fecha_actualizacion": datetime.utcnow().isoformat()
-                }
+                doc_id = str(uuid.uuid4())
+                db.collection("puntos_de_encuentro").document(doc_id).set(data)
 
-                if modo == "edit" and edit_data:
-                    doc_id = edit_data["id"]
-                    db.collection("puntos_de_encuentro").document(doc_id).set(data)
-                    for i, p in enumerate(st.session_state["puntos"]):
-                        if p["id"] == doc_id:
-                            st.session_state["puntos"][i] = {"id": doc_id, **data}
-                            break
-                    st.success("✅ Punto actualizado.")
-                else:
-                    doc_id = str(uuid.uuid4())
-                    db.collection("puntos_de_encuentro").document(doc_id).set(data)
+                if not isinstance(st.session_state["puntos"], list):
+                    st.session_state["puntos"] = []
 
-                    if not isinstance(st.session_state["puntos"], list):
-                        st.session_state["puntos"] = []
+                st.session_state["puntos"].append({"id": doc_id, **data})
+                st.success("✅ Punto creado.")
 
-                    st.session_state["puntos"].append({"id": doc_id, **data})
-                    st.success("✅ Punto creado.")
-
-                st.session_state["limpiar"] = True
-                st.session_state["puntos"] = None  # ← fuerza recarga desde Firebase
-
-    with col_limpiar:
-        if st.button("🧹 Limpiar Formulario"):
-            st.session_state["limpiar"] = True
-
-    st.markdown("---")
-    st.subheader("🔎 Buscar por Ciudad")
-    st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
+            st.session_state["puntos"] = None  # Fuerza recarga desde Firebase
 
 # ------------------ VISTA DERECHA ------------------
 with col_der:
