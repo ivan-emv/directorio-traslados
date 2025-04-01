@@ -6,39 +6,19 @@ import uuid
 # Configuración inicial
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
-# Inicializar variables de sesión
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "limpiar"]:
+# Inicializar sesión
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos"]:
     if key not in st.session_state:
-        if key == "puntos":
-            st.session_state[key] = None
-        elif key == "num_telefonos":
-            st.session_state[key] = 1
-        elif key == "limpiar":
-            st.session_state[key] = False
-        else:
-            st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
-
-# Si se activó limpieza, reiniciar valores
-if st.session_state["limpiar"]:
-    st.session_state["modo"] = "nuevo"
-    st.session_state["edit_data"] = None
+        st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
+if "puntos" not in st.session_state:
+    st.session_state["puntos"] = None
+if "num_telefonos" not in st.session_state:
     st.session_state["num_telefonos"] = 1
-    st.session_state["limpiar"] = False
-
-    # Limpiar campos del formulario
-    for key in list(st.session_state.keys()):
-        if key.startswith("titulo_") or key.startswith("numero_") or key in [
-            "Ciudad", "Proveedor", "PuntoEncuentro", "NombrePuntoLlegada", "OtroLlegada"
-        ]:
-            del st.session_state[key]
 
 # Inicializar Firebase
 db = init_firestore()
 
-st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
-st.markdown("---")
-
-# Traer datos si no están en caché
+# Cargar datos si no están cacheados
 if st.session_state["puntos"] is None:
     docs = db.collection("puntos_de_encuentro").stream()
     st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs]
@@ -46,39 +26,46 @@ if st.session_state["puntos"] is None:
 puntos = st.session_state["puntos"]
 ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 
-# Layout 40/60
+# Layout principal
 col_izq, col_der = st.columns([0.4, 0.6])
 
-# ------------------ COLUMNA IZQUIERDA ------------------
+# ------------------ FORMULARIO (Columna Izquierda) ------------------
 with col_izq:
     st.subheader("📋 Punto de Encuentro")
 
     edit_data = st.session_state["edit_data"]
     modo = st.session_state["modo"]
 
-    ciudad = st.text_input("Ciudad", value=edit_data.get("ciudad", "") if edit_data else "", key="Ciudad")
+    # Variables y claves de formulario
+    campo_keys = {
+        "ciudad": "ciudad_input",
+        "proveedor": "proveedor_input",
+        "nombre_llegada": "nombre_llegada_input",
+        "otro_llegada": "otro_llegada_input",
+        "punto_encuentro": "punto_encuentro_input",
+    }
+
+    ciudad = st.text_input("Ciudad", value=edit_data.get("ciudad", "") if edit_data else "", key=campo_keys["ciudad"])
 
     llegada_opciones = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
     llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(edit_data["punto_llegada"]) if edit_data else 0)
 
+    nombre_punto_llegada = ""
+    otro_llegada = ""
+
     if llegada in ["Aeropuerto", "Estación de Tren", "Puerto"]:
-        nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "", key="NombrePuntoLlegada")
-    else:
-        nombre_punto_llegada = ""
+        nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "", key=campo_keys["nombre_llegada"])
 
     if llegada == "Otros":
-        otro_llegada = st.text_input("Otros (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "", key="OtroLlegada")
-    else:
-        otro_llegada = ""
+        otro_llegada = st.text_input("Otros (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "", key=campo_keys["otro_llegada"])
 
-    proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "", key="Proveedor")
+    proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "", key=campo_keys["proveedor"])
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
-    # Ajustar número de teléfonos según datos de edición
+    # En modo edición: ajustar número de campos
     if modo == "edit" and edit_data:
-        total_existentes = len(edit_data["telefonos"])
-        st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
+        st.session_state["num_telefonos"] = len(edit_data["telefonos"]) or 1
 
     telefonos = []
     for i in range(st.session_state["num_telefonos"]):
@@ -95,7 +82,7 @@ with col_izq:
         if st.button("➕ Agregar otro número"):
             st.session_state["num_telefonos"] += 1
 
-    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "", key="PuntoEncuentro")
+    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "", key=campo_keys["punto_encuentro"])
 
     col_guardar, col_limpiar = st.columns(2)
 
@@ -107,8 +94,8 @@ with col_izq:
                 data = {
                     "ciudad": ciudad,
                     "punto_llegada": llegada,
-                    "nombre_punto_llegada": nombre_punto_llegada,
-                    "otro_llegada": otro_llegada,
+                    "nombre_punto_llegada": nombre_punto_llegada if llegada != "Otros" else "",
+                    "otro_llegada": otro_llegada if llegada == "Otros" else "",
                     "proveedor": proveedor,
                     "telefonos": telefonos,
                     "punto_encuentro": punto_encuentro,
@@ -129,17 +116,32 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                st.session_state["limpiar"] = True
+                # Limpiar automáticamente
+                for k in campo_keys.values():
+                    st.session_state[k] = ""
+                for i in range(5):
+                    st.session_state[f"titulo_{i}"] = ""
+                    st.session_state[f"numero_{i}"] = ""
+                st.session_state["num_telefonos"] = 1
+                st.session_state["edit_data"] = None
+                st.session_state["modo"] = "nuevo"
 
     with col_limpiar:
         if st.button("🧹 Limpiar Formulario"):
-            st.session_state["limpiar"] = True
+            for k in campo_keys.values():
+                st.session_state[k] = ""
+            for i in range(5):
+                st.session_state[f"titulo_{i}"] = ""
+                st.session_state[f"numero_{i}"] = ""
+            st.session_state["num_telefonos"] = 1
+            st.session_state["edit_data"] = None
+            st.session_state["modo"] = "nuevo"
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ------------------ COLUMNA DERECHA ------------------
+# ------------------ VISUALIZACIÓN (Columna Derecha) ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
