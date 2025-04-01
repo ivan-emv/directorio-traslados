@@ -6,6 +6,14 @@ import uuid
 # ✅ Obligatorio: debe ser el primer comando Streamlit
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
+# ✅ Manejador de recarga segura
+if "refrescar" not in st.session_state:
+    st.session_state["refrescar"] = False
+
+if st.session_state["refrescar"]:
+    st.session_state["refrescar"] = False
+    st.experimental_rerun()
+
 # Inicializar conexión con Firebase
 db = init_firestore()
 
@@ -62,7 +70,7 @@ with st.expander("➕ Agregar / Editar Punto de Encuentro", expanded=False):
             guardar_punto(data, edit_id)
             st.success("✅ Punto de encuentro guardado exitosamente.")
             st.session_state["edit_id"] = None
-            st.experimental_rerun()
+            st.session_state["refrescar"] = True
 
 # ------------------ Visualización ------------------ #
 st.subheader("📍 Puntos de Encuentro Registrados")
@@ -89,9 +97,9 @@ for punto in filtro:
         with col1:
             if st.button("✏️ Editar", key=f"edit_{punto['id']}"):
                 st.session_state["edit_id"] = punto["id"]
-                st.experimental_rerun()
+                st.session_state["refrescar"] = True
         with col2:
             if st.button("🗑️ Eliminar", key=f"delete_{punto['id']}"):
                 db.collection("puntos_de_encuentro").document(punto["id"]).delete()
                 st.success("✅ Punto eliminado correctamente.")
-                st.experimental_rerun()
+                st.session_state["refrescar"] = True
