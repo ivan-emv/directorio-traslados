@@ -128,10 +128,16 @@ with col_izq:
                             break
                     st.success("✅ Punto actualizado.")
                 else:
-                    doc_id = str(uuid.uuid4())
-                    db.collection("puntos_de_encuentro").document(doc_id).set(data)
-                    st.session_state["puntos"].append({"id": doc_id, **data})
-                    st.success("✅ Punto creado.")
+    doc_id = str(uuid.uuid4())
+    db.collection("puntos_de_encuentro").document(doc_id).set(data)
+
+    # Asegurar que puntos existe como lista
+    if "puntos" not in st.session_state or st.session_state["puntos"] is None:
+        st.session_state["puntos"] = []
+
+    st.session_state["puntos"].append({"id": doc_id, **data})
+    st.success("✅ Punto creado.")
+
 
                 st.session_state["limpiar_formulario"] = True
 
