@@ -147,7 +147,13 @@ with col_der:
     ]
 
     for punto in filtro:
-        with st.expander(f"📌 {punto.get('ciudad', 'Sin Ciudad')} - {punto.get('punto_llegada', 'Sin Llegada')} - {punto.get('nombre_punto_llegada', '')}"):
+    if not isinstance(punto, dict):
+        continue
+    if "ciudad" not in punto or "punto_llegada" not in punto:
+        continue
+
+    with st.expander(f"📌 {punto.get('ciudad')} - {punto.get('punto_llegada')} - {punto.get('nombre_punto_llegada', '')}"):
+
             st.markdown(f"**Proveedor:** {punto.get('proveedor', 'N/D')}")
             st.markdown(f"**Punto de Encuentro:** {punto.get('punto_encuentro', '')}")
             st.markdown("**Teléfonos de Contacto:**")
