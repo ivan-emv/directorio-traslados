@@ -7,10 +7,12 @@ import uuid
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
 # Inicializar variables de sesión
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos"]:
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos"]:
     if key not in st.session_state:
         if key == "puntos":
             st.session_state["puntos"] = None
+        elif key == "num_telefonos":
+            st.session_state["num_telefonos"] = 1
         else:
             st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 
@@ -51,8 +53,15 @@ with col_izq:
 
     proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "")
 
+    st.markdown("### 📞 Teléfonos de Contacto")
+
+    # Ajustar número de teléfonos según datos de edición
+    if modo == "edit" and edit_data:
+        total_existentes = len(edit_data["telefonos"])
+        st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
+
     telefonos = []
-    for i in range(5):
+    for i in range(st.session_state["num_telefonos"]):
         col1, col2 = st.columns([1, 2])
         tel_val = edit_data["telefonos"][i] if edit_data and i < len(edit_data["telefonos"]) else {"titulo": "", "numero": ""}
         with col1:
@@ -61,6 +70,11 @@ with col_izq:
             numero = st.text_input(f"Teléfono {i+1}", value=tel_val["numero"], key=f"numero_{i}")
         if titulo or numero:
             telefonos.append({"titulo": titulo, "numero": numero})
+
+    # Botón para agregar más teléfonos (hasta 5)
+    if st.session_state["num_telefonos"] < 5:
+        if st.button("➕ Agregar otro número"):
+            st.session_state["num_telefonos"] += 1
 
     punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data.get("punto_encuentro", "") if edit_data else "")
 
@@ -93,9 +107,10 @@ with col_izq:
                 st.session_state["puntos"].append({"id": doc_id, **data})
                 st.success("✅ Punto creado.")
 
-            # Resetear modo y formulario
+            # Resetear formulario
             st.session_state["modo"] = "nuevo"
             st.session_state["edit_data"] = None
+            st.session_state["num_telefonos"] = 1
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
