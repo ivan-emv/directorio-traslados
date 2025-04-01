@@ -11,22 +11,21 @@ for key in ["refrescar", "eliminar_id", "edit_id", "ciudad_filtro"]:
     if key not in st.session_state:
         st.session_state[key] = None if key in ["edit_id", "eliminar_id", "ciudad_filtro"] else False
 
-# Ejecutar eliminación si está marcada
-if st.session_state["eliminar_id"]:
-    db = init_firestore()
-    db.collection("puntos_de_encuentro").document(st.session_state["eliminar_id"]).delete()
-    st.success("✅ Punto eliminado correctamente.")
-    st.session_state["eliminar_id"] = None
-    st.session_state["refrescar"] = True
-
-# Ejecutar recarga si fue marcada
-if st.session_state["refrescar"]:
-    st.session_state["refrescar"] = False
-    st.experimental_rerun()
-
 # Inicializar Firebase
 db = init_firestore()
 
+# Ejecutar acciones diferidas
+def ejecutar_acciones():
+    if st.session_state["eliminar_id"]:
+        db.collection("puntos_de_encuentro").document(st.session_state["eliminar_id"]).delete()
+        st.success("✅ Punto eliminado correctamente.")
+        st.session_state["eliminar_id"] = None
+        st.session_state["refrescar"] = True
+
+# Ejecutar acciones antes de continuar con el renderizado
+ejecutar_acciones()
+
+# ---------------- UI ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
 st.markdown("---")
 
@@ -38,9 +37,7 @@ ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 # Layout dividido
 col_izq, col_der = st.columns([0.4, 0.6])
 
-# ----------------------------------------------
-# 📋 Columna izquierda: formulario + selector
-# ----------------------------------------------
+# ------------------ Columna izquierda ------------------
 with col_izq:
 
     st.subheader("➕ Agregar / Editar Punto")
@@ -94,9 +91,7 @@ with col_izq:
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ----------------------------------------------
-# 📄 Columna derecha: visualización
-# ----------------------------------------------
+# ------------------ Columna derecha ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
@@ -120,4 +115,8 @@ with col_der:
             with col2:
                 if st.button("🗑️ Eliminar", key=f"delete_{punto['id']}"):
                     st.session_state["eliminar_id"] = punto["id"]
-                    st.session_state["refrescar"] = True
+
+# ✅ Ejecutar recarga solo después del render
+if st.session_state["refrescar"]:
+    st.session_state["refrescar"] = False
+    st.experimental_rerun()
