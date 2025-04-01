@@ -30,6 +30,9 @@ ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 col_izq, col_der = st.columns([0.4, 0.6])
 
 # ------------------ FORMULARIO (Columna Izquierda) ------------------
+    st.markdown("---")
+    st.subheader("🔎 Buscar por Ciudad")
+    st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 with col_izq:
     st.subheader("📋 Punto de Encuentro")
 
