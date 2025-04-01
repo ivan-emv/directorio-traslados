@@ -25,7 +25,6 @@ if st.session_state["limpiar"]:
     st.session_state["num_telefonos"] = 1
     st.session_state["limpiar"] = False
 
-    # Limpiar campos del formulario
     for key in list(st.session_state.keys()):
         if key.startswith("titulo_") or key.startswith("numero_") or key in [
             "Ciudad", "Proveedor", "PuntoEncuentro", "NombrePuntoLlegada", "OtroLlegada"
@@ -41,7 +40,7 @@ st.markdown("---")
 # Traer datos si no están en caché
 if st.session_state["puntos"] is None:
     docs = db.collection("puntos_de_encuentro").stream()
-    st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+    st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()]
 
 puntos = st.session_state["puntos"]
 ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if p and "ciudad" in p))
@@ -75,7 +74,6 @@ with col_izq:
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
-    # Ajustar número de teléfonos según datos de edición
     if modo == "edit" and edit_data:
         total_existentes = len(edit_data["telefonos"])
         st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
@@ -126,6 +124,10 @@ with col_izq:
                 else:
                     doc_id = str(uuid.uuid4())
                     db.collection("puntos_de_encuentro").document(doc_id).set(data)
+
+                    if not isinstance(st.session_state["puntos"], list):
+                        st.session_state["puntos"] = []
+
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
