@@ -100,7 +100,7 @@ with col_der:
     ]
 
     for punto in filtro:
-        with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} - {punto['nombre_punto_llegada']}"):
+        with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} - {punto.get('nombre_punto_llegada', '')}"):
             st.markdown(f"**Proveedor:** {punto['proveedor']}")
             st.markdown(f"**Punto de Encuentro:** {punto['punto_encuentro']}")
             st.markdown("**Teléfonos de Contacto:**")
