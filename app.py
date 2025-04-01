@@ -3,18 +3,29 @@ from firebase_config import init_firestore
 from datetime import datetime
 import uuid
 
-# ✅ Obligatorio: debe ser el primer comando Streamlit
+# ✅ Este comando debe ser el primero de Streamlit
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
-# ✅ Manejador de recarga segura
+# ✅ Variables de control de sesión
 if "refrescar" not in st.session_state:
     st.session_state["refrescar"] = False
+if "eliminar_id" not in st.session_state:
+    st.session_state["eliminar_id"] = None
 
+# ✅ Ejecutar acción de eliminación si está pendiente
+if st.session_state["eliminar_id"]:
+    db = init_firestore()
+    db.collection("puntos_de_encuentro").document(st.session_state["eliminar_id"]).delete()
+    st.success("✅ Punto eliminado correctamente.")
+    st.session_state["eliminar_id"] = None
+    st.session_state["refrescar"] = True
+
+# ✅ Recargar la app si fue marcado
 if st.session_state["refrescar"]:
     st.session_state["refrescar"] = False
     st.experimental_rerun()
 
-# Inicializar conexión con Firebase
+# 🔥 Conexión a Firebase
 db = init_firestore()
 
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
@@ -92,7 +103,7 @@ for punto in filtro:
         st.markdown("**Teléfonos de Contacto:**")
         for tel in punto["telefonos"]:
             st.markdown(f"- **{tel['titulo']}**: {tel['numero']}")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("✏️ Editar", key=f"edit_{punto['id']}"):
@@ -100,6 +111,4 @@ for punto in filtro:
                 st.session_state["refrescar"] = True
         with col2:
             if st.button("🗑️ Eliminar", key=f"delete_{punto['id']}"):
-                db.collection("puntos_de_encuentro").document(punto["id"]).delete()
-                st.success("✅ Punto eliminado correctamente.")
-                st.session_state["refrescar"] = True
+                st.session_state["eliminar_id"] = punto["id"]
