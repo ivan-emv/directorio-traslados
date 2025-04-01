@@ -23,8 +23,13 @@ db = init_firestore()
 # Cargar datos si no están cacheados
 if st.session_state["puntos"] is None:
     docs = db.collection("puntos_de_encuentro").stream()
-    st.session_state["puntos"] = [
-        {"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()
+    raw_docs = [{"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()]
+    st.session_state["puntos"] = raw_docs
+
+    # Depuración visual
+    st.markdown("### 🧪 Debug: Documentos en Firebase")
+    for item in raw_docs:
+        st.json(item)
     ]
 
 puntos = [p for p in st.session_state["puntos"] if p]  # Solo eliminamos los None reales
