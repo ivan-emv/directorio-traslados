@@ -7,56 +7,42 @@ import uuid
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
 # Inicializar variables de sesión
-for key in ["refrescar", "eliminar_id", "edit_id", "ciudad_filtro"]:
+for key in ["modo", "edit_data", "ciudad_filtro"]:
     if key not in st.session_state:
-        st.session_state[key] = None if key in ["edit_id", "eliminar_id", "ciudad_filtro"] else False
+        st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 
 # Inicializar Firebase
 db = init_firestore()
 
-# Ejecutar acciones diferidas
-def ejecutar_acciones():
-    if st.session_state["eliminar_id"]:
-        db.collection("puntos_de_encuentro").document(st.session_state["eliminar_id"]).delete()
-        st.success("✅ Punto eliminado correctamente.")
-        st.session_state["eliminar_id"] = None
-        st.session_state["refrescar"] = True
-
-# Ejecutar acciones antes de continuar con el renderizado
-ejecutar_acciones()
-
-# ---------------- UI ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
 st.markdown("---")
 
-# Traer datos
+# Traer datos desde Firebase
 docs = db.collection("puntos_de_encuentro").stream()
 puntos = [{"id": doc.id, **doc.to_dict()} for doc in docs]
 ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 
-# Layout dividido
+# Layout 40/60
 col_izq, col_der = st.columns([0.4, 0.6])
 
-# ------------------ Columna izquierda ------------------
+# ------------------ COLUMNA IZQUIERDA ------------------
 with col_izq:
+    st.subheader("📋 Punto de Encuentro")
 
-    st.subheader("➕ Agregar / Editar Punto")
+    edit_data = st.session_state["edit_data"]
+    modo = st.session_state["modo"]
 
-    # Recuperar punto si está en edición
-    punto_edicion = None
-    if st.session_state["edit_id"]:
-        punto_edicion = next((p for p in puntos if p["id"] == st.session_state["edit_id"]), None)
-
-    ciudad = st.text_input("Ciudad", value=punto_edicion["ciudad"] if punto_edicion else "")
+    # Valores iniciales
+    ciudad = st.text_input("Ciudad", value=edit_data["ciudad"] if edit_data else "")
     llegada_opciones = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
-    llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(punto_edicion["punto_llegada"]) if punto_edicion else 0)
-    otro_llegada = st.text_input("Otro (si aplica)", value=punto_edicion.get("otro_llegada", "") if punto_edicion else "")
-    proveedor = st.text_input("Nombre del Proveedor", value=punto_edicion["proveedor"] if punto_edicion else "")
+    llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(edit_data["punto_llegada"]) if edit_data else 0)
+    otro_llegada = st.text_input("Otro (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "")
+    proveedor = st.text_input("Nombre del Proveedor", value=edit_data["proveedor"] if edit_data else "")
 
     telefonos = []
     for i in range(5):
         col1, col2 = st.columns([1, 2])
-        tel_val = punto_edicion["telefonos"][i] if punto_edicion and i < len(punto_edicion["telefonos"]) else {"titulo": "", "numero": ""}
+        tel_val = edit_data["telefonos"][i] if edit_data and i < len(edit_data["telefonos"]) else {"titulo": "", "numero": ""}
         with col1:
             titulo = st.text_input(f"Título {i+1}", value=tel_val["titulo"], key=f"titulo_{i}")
         with col2:
@@ -64,11 +50,11 @@ with col_izq:
         if titulo or numero:
             telefonos.append({"titulo": titulo, "numero": numero})
 
-    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=punto_edicion["punto_encuentro"] if punto_edicion else "")
+    punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data["punto_encuentro"] if edit_data else "")
 
     if st.button("💾 Guardar Punto"):
         if not ciudad or not proveedor or not punto_encuentro:
-            st.warning("Por favor, completa los campos obligatorios.")
+            st.warning("Por favor, completa todos los campos obligatorios.")
         else:
             data = {
                 "ciudad": ciudad,
@@ -79,19 +65,24 @@ with col_izq:
                 "punto_encuentro": punto_encuentro,
                 "fecha_actualizacion": datetime.utcnow().isoformat()
             }
-            if punto_edicion:
-                db.collection("puntos_de_encuentro").document(st.session_state["edit_id"]).set(data)
+
+            if modo == "edit" and edit_data:
+                db.collection("puntos_de_encuentro").document(edit_data["id"]).set(data)
+                st.success("✅ Punto actualizado.")
             else:
                 db.collection("puntos_de_encuentro").document(str(uuid.uuid4())).set(data)
-            st.success("✅ Punto guardado correctamente.")
-            st.session_state["edit_id"] = None
-            st.session_state["refrescar"] = True
+                st.success("✅ Punto creado.")
+            
+            # Resetear modo
+            st.session_state["modo"] = "nuevo"
+            st.session_state["edit_data"] = None
+            st.experimental_set_query_params(saved="true")
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ------------------ Columna derecha ------------------
+# ------------------ COLUMNA DERECHA ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
@@ -110,13 +101,9 @@ with col_der:
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✏️ Editar", key=f"edit_{punto['id']}"):
-                    st.session_state["edit_id"] = punto["id"]
-                    st.session_state["refrescar"] = True
+                    st.session_state["modo"] = "edit"
+                    st.session_state["edit_data"] = punto
             with col2:
                 if st.button("🗑️ Eliminar", key=f"delete_{punto['id']}"):
-                    st.session_state["eliminar_id"] = punto["id"]
-
-# ✅ Ejecutar recarga solo después del render
-if st.session_state["refrescar"]:
-    st.session_state["refrescar"] = False
-    st.experimental_rerun()
+                    db.collection("puntos_de_encuentro").document(punto["id"]).delete()
+                    st.success("✅ Punto eliminado correctamente.")
