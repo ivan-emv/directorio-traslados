@@ -32,11 +32,19 @@ with col_izq:
     edit_data = st.session_state["edit_data"]
     modo = st.session_state["modo"]
 
-    # Valores iniciales
     ciudad = st.text_input("Ciudad", value=edit_data["ciudad"] if edit_data else "")
+
     llegada_opciones = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
     llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(edit_data["punto_llegada"]) if edit_data else 0)
-    otro_llegada = st.text_input("Otro (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "")
+
+    # Mostrar caja para especificar el nombre del punto de llegada (Orly, Atocha, etc.)
+    nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "")
+
+    # Mostrar "Otro (si aplica)" solo si se selecciona "Otros"
+    otro_llegada = ""
+    if llegada == "Otros":
+        otro_llegada = st.text_input("Otro (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "")
+
     proveedor = st.text_input("Nombre del Proveedor", value=edit_data["proveedor"] if edit_data else "")
 
     telefonos = []
@@ -53,13 +61,14 @@ with col_izq:
     punto_encuentro = st.text_area("Descripción del Punto de Encuentro", value=edit_data["punto_encuentro"] if edit_data else "")
 
     if st.button("💾 Guardar Punto"):
-        if not ciudad or not proveedor or not punto_encuentro:
+        if not ciudad or not proveedor or not punto_encuentro or not nombre_punto_llegada:
             st.warning("Por favor, completa todos los campos obligatorios.")
         else:
             data = {
                 "ciudad": ciudad,
                 "punto_llegada": llegada,
-                "otro_llegada": otro_llegada,
+                "nombre_punto_llegada": nombre_punto_llegada,
+                "otro_llegada": otro_llegada if llegada == "Otros" else "",
                 "proveedor": proveedor,
                 "telefonos": telefonos,
                 "punto_encuentro": punto_encuentro,
@@ -91,7 +100,7 @@ with col_der:
     ]
 
     for punto in filtro:
-        with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} ({punto.get('otro_llegada','')})"):
+        with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} - {punto['nombre_punto_llegada']}"):
             st.markdown(f"**Proveedor:** {punto['proveedor']}")
             st.markdown(f"**Punto de Encuentro:** {punto['punto_encuentro']}")
             st.markdown("**Teléfonos de Contacto:**")
