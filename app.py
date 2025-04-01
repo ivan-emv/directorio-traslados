@@ -18,15 +18,15 @@ for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "li
         else:
             st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 
-# Si se activó el flag de limpiar, reiniciar valores
+# Si se activó limpieza, reiniciar valores
 if st.session_state["limpiar"]:
     st.session_state["modo"] = "nuevo"
     st.session_state["edit_data"] = None
     st.session_state["num_telefonos"] = 1
+    st.session_state["limpiar"] = False
     for i in range(5):
         st.session_state.pop(f"titulo_{i}", None)
         st.session_state.pop(f"numero_{i}", None)
-    st.session_state["limpiar"] = False
 
 # Inicializar Firebase
 db = init_firestore()
@@ -67,7 +67,7 @@ with col_izq:
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
-    # Ajustar número de teléfonos según datos de edición
+    # Ajustar número de teléfonos en edición
     if modo == "edit" and edit_data:
         total_existentes = len(edit_data["telefonos"])
         st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
@@ -121,14 +121,11 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                # Limpiar luego de guardar
                 st.session_state["limpiar"] = True
-                st.experimental_rerun()
 
     with col_limpiar:
         if st.button("🧹 Limpiar Formulario"):
             st.session_state["limpiar"] = True
-            st.experimental_rerun()
 
     st.markdown("---")
     st.subheader("🔎 Buscar por Ciudad")
