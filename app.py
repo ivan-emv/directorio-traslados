@@ -3,9 +3,10 @@ from firebase_config import init_firestore
 from datetime import datetime
 import uuid
 
+# Configuración inicial
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
-# Inicializar sesión
+# Inicializar variables de sesión
 for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "limpiar"]:
     if key not in st.session_state:
         if key == "puntos":
@@ -17,12 +18,14 @@ for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "li
         else:
             st.session_state[key] = None if key in ["edit_data", "ciudad_filtro"] else "nuevo"
 
-# Limpiar formulario
+# Si se activó limpieza, reiniciar valores
 if st.session_state["limpiar"]:
     st.session_state["modo"] = "nuevo"
     st.session_state["edit_data"] = None
     st.session_state["num_telefonos"] = 1
     st.session_state["limpiar"] = False
+
+    # Limpiar campos del formulario
     for key in list(st.session_state.keys()):
         if key.startswith("titulo_") or key.startswith("numero_") or key in [
             "Ciudad", "Proveedor", "PuntoEncuentro", "NombrePuntoLlegada", "OtroLlegada"
@@ -35,18 +38,18 @@ db = init_firestore()
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
 st.markdown("---")
 
-# Cargar puntos si es necesario
+# Traer datos si no están en caché
 if st.session_state["puntos"] is None:
     docs = db.collection("puntos_de_encuentro").stream()
-    st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs if doc.to_dict()]
+    st.session_state["puntos"] = [{"id": doc.id, **doc.to_dict()} for doc in docs]
 
 puntos = st.session_state["puntos"]
-ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos if p and "ciudad" in p))
+ciudades_disponibles = sorted(set(p["ciudad"] for p in puntos))
 
-# Layout principal
+# Layout 40/60
 col_izq, col_der = st.columns([0.4, 0.6])
 
-# ------------------ FORMULARIO ------------------
+# ------------------ COLUMNA IZQUIERDA ------------------
 with col_izq:
     st.subheader("📋 Punto de Encuentro")
 
@@ -58,21 +61,24 @@ with col_izq:
     llegada_opciones = ["Aeropuerto", "Estación de Tren", "Puerto", "Otros"]
     llegada = st.selectbox("Punto de Llegada", llegada_opciones, index=llegada_opciones.index(edit_data["punto_llegada"]) if edit_data else 0)
 
-    nombre_punto_llegada = ""
-    otro_llegada = ""
-
     if llegada in ["Aeropuerto", "Estación de Tren", "Puerto"]:
         nombre_punto_llegada = st.text_input("Nombre del Punto de Llegada", value=edit_data.get("nombre_punto_llegada", "") if edit_data else "", key="NombrePuntoLlegada")
+    else:
+        nombre_punto_llegada = ""
 
     if llegada == "Otros":
         otro_llegada = st.text_input("Otros (si aplica)", value=edit_data.get("otro_llegada", "") if edit_data else "", key="OtroLlegada")
+    else:
+        otro_llegada = ""
 
     proveedor = st.text_input("Nombre del Proveedor", value=edit_data.get("proveedor", "") if edit_data else "", key="Proveedor")
 
     st.markdown("### 📞 Teléfonos de Contacto")
 
+    # Ajustar número de teléfonos según datos de edición
     if modo == "edit" and edit_data:
-        st.session_state["num_telefonos"] = len(edit_data["telefonos"]) or 1
+        total_existentes = len(edit_data["telefonos"])
+        st.session_state["num_telefonos"] = total_existentes if total_existentes > 0 else 1
 
     telefonos = []
     for i in range(st.session_state["num_telefonos"]):
@@ -120,15 +126,10 @@ with col_izq:
                 else:
                     doc_id = str(uuid.uuid4())
                     db.collection("puntos_de_encuentro").document(doc_id).set(data)
-
-                    if not isinstance(st.session_state["puntos"], list):
-                        st.session_state["puntos"] = []
-
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
                 st.session_state["limpiar"] = True
-                st.session_state["puntos"] = None  # ← fuerza recarga visual desde Firebase
 
     with col_limpiar:
         if st.button("🧹 Limpiar Formulario"):
@@ -138,27 +139,21 @@ with col_izq:
     st.subheader("🔎 Buscar por Ciudad")
     st.session_state["ciudad_filtro"] = st.selectbox("Selecciona una ciudad", ["Todas"] + ciudades_disponibles)
 
-# ------------------ VISTA DERECHA ------------------
+# ------------------ COLUMNA DERECHA ------------------
 with col_der:
     st.subheader("📍 Puntos de Encuentro")
 
     filtro = puntos if st.session_state["ciudad_filtro"] == "Todas" else [
-        p for p in puntos if p.get("ciudad") == st.session_state["ciudad_filtro"]
+        p for p in puntos if p["ciudad"] == st.session_state["ciudad_filtro"]
     ]
 
     for punto in filtro:
-    if not isinstance(punto, dict):
-        continue
-    if "ciudad" not in punto or "punto_llegada" not in punto:
-        continue
-
-    with st.expander(f"📌 {punto.get('ciudad')} - {punto.get('punto_llegada')} - {punto.get('nombre_punto_llegada', '')}"):
-
-            st.markdown(f"**Proveedor:** {punto.get('proveedor', 'N/D')}")
-            st.markdown(f"**Punto de Encuentro:** {punto.get('punto_encuentro', '')}")
+        with st.expander(f"📌 {punto['ciudad']} - {punto['punto_llegada']} - {punto.get('nombre_punto_llegada', '')}"):
+            st.markdown(f"**Proveedor:** {punto['proveedor']}")
+            st.markdown(f"**Punto de Encuentro:** {punto['punto_encuentro']}")
             st.markdown("**Teléfonos de Contacto:**")
-            for tel in punto.get("telefonos", []):
-                st.markdown(f"- **{tel.get('titulo', '')}**: {tel.get('numero', '')}")
+            for tel in punto["telefonos"]:
+                st.markdown(f"- **{tel['titulo']}**: {tel['numero']}")
 
             col1, col2 = st.columns(2)
             with col1:
