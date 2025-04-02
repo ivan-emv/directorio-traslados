@@ -29,6 +29,15 @@ db = init_firestore()
 
 # ---------------- LOGIN ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
+# 🔧 Ocultar la barra superior y el menú de Streamlit
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 if not st.session_state["rol"]:
     with st.expander("🔐 Iniciar sesión como Administrador"):
