@@ -24,7 +24,8 @@ for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "ro
             st.session_state[key] = 1
         else:
             st.session_state[key] = None
-
+    # 📌 Agregar el logo en la parte superior con tamaño reducido
+    st.image("https://github.com/ivan-emv/acceso-agentes/blob/main/a1.png?raw=true", width=500)
 # ---------------- FIREBASE ----------------
 db = init_firestore()
 
