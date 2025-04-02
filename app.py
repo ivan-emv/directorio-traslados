@@ -15,14 +15,12 @@ USUARIOS = {
 }
 
 # ---------------- SESIÓN ----------------
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "rol", "usuario", "logueado"]:
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "rol", "usuario"]:
     if key not in st.session_state:
         if key == "puntos":
             st.session_state[key] = None
         elif key == "num_telefonos":
             st.session_state[key] = 1
-        elif key == "logueado":
-            st.session_state[key] = False
         else:
             st.session_state[key] = None
 
@@ -32,24 +30,19 @@ db = init_firestore()
 # ---------------- LOGIN ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
 
-if st.session_state["rol"] != "admin":
+if not st.session_state["rol"]:
     with st.expander("🔐 Iniciar sesión como Administrador"):
-        usuario = st.text_input("Usuario")
-        password = st.text_input("Contraseña", type="password")
+        usuario = st.text_input("Usuario", key="login_usuario")
+        password = st.text_input("Contraseña", type="password", key="login_password")
         if st.button("Iniciar sesión"):
             if usuario in USUARIOS and USUARIOS[usuario]["password"] == password:
                 st.session_state["rol"] = USUARIOS[usuario]["rol"]
                 st.session_state["usuario"] = usuario
-                st.session_state["logueado"] = True
+                st.success("✅ Acceso concedido como administrador.")
             else:
                 st.error("❌ Usuario o contraseña incorrectos.")
 
-# Rerun seguro si el usuario se acaba de loguear
-if st.session_state.get("logueado"):
-    st.session_state["logueado"] = False
-    st.experimental_rerun()
-
-# Mensaje de sesión activa
+# ---------------- MENSAJE DE SESIÓN ----------------
 if st.session_state["rol"] == "admin":
     st.success(f"🔓 Sesión iniciada como **{st.session_state['usuario']}** (Administrador)")
 else:
@@ -151,7 +144,7 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                st.session_state["puntos"] = None  # Recargar puntos
+                st.session_state["puntos"] = None  # Recargar datos
 
 # ---------------- VISTA DERECHA ----------------
 with col_der:
