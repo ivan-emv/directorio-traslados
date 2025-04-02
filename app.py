@@ -154,6 +154,9 @@ with col_der:
         p for p in puntos if isinstance(p, dict) and p.get("ciudad") == st.session_state["ciudad_filtro"]
     ]
 
+    # ✅ Ordenar alfabéticamente por ciudad
+    filtro = sorted(filtro, key=lambda x: x.get("ciudad", "").lower())
+
     for punto in filtro:
         if not isinstance(punto, dict):
             continue
