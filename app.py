@@ -2,10 +2,18 @@ import streamlit as st
 from firebase_config import init_firestore
 from datetime import datetime
 import uuid
-st.image("a1.png", width=300)  # Ajusta el ancho si lo deseas más grande o más pequeño
 
 # ---------------- CONFIGURACIÓN ----------------
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
+# 🔧 Ocultar la barra superior y el menú de Streamlit
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 USUARIOS = {
     "admin1": {"password": "admin123", "rol": "admin"},
@@ -24,22 +32,15 @@ for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "ro
             st.session_state[key] = 1
         else:
             st.session_state[key] = None
-    # 📌 Agregar el logo en la parte superior con tamaño reducido
-    st.image("https://github.com/ivan-emv/acceso-agentes/blob/main/a1.png?raw=true", width=500)
+
+# ---------------- LOGO ----------------
+st.image("a1.png", width=300)
+
 # ---------------- FIREBASE ----------------
 db = init_firestore()
 
 # ---------------- LOGIN ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
-# 🔧 Ocultar la barra superior y el menú de Streamlit
-hide_streamlit_style = """
-    <style>
-        #MainMenu {visibility: hidden;}
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-    </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 if not st.session_state["rol"]:
     with st.expander("🔐 Iniciar sesión como Administrador"):
@@ -155,7 +156,7 @@ with col_izq:
                     st.session_state["puntos"].append({"id": doc_id, **data})
                     st.success("✅ Punto creado.")
 
-                st.session_state["puntos"] = None  # Recargar datos
+                st.session_state["puntos"] = None
 
 # ---------------- VISTA DERECHA ----------------
 with col_der:
@@ -165,7 +166,7 @@ with col_der:
         p for p in puntos if isinstance(p, dict) and p.get("ciudad") == st.session_state["ciudad_filtro"]
     ]
 
-    # ✅ Ordenar alfabéticamente por ciudad
+    # Ordenar alfabéticamente por ciudad
     filtro = sorted(filtro, key=lambda x: x.get("ciudad", "").lower())
 
     for punto in filtro:
