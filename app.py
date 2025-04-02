@@ -2,8 +2,8 @@ import streamlit as st
 from firebase_config import init_firestore
 from datetime import datetime
 import uuid
-    # 📌 Agregar el logo en la parte superior con tamaño reducido
-    st.image("https://github.com/ivan-emv/acceso-agentes/blob/main/a1.png?raw=true", width=500)
+st.image("a1.png", width=300)  # Ajusta el ancho si lo deseas más grande o más pequeño
+
 # ---------------- CONFIGURACIÓN ----------------
 st.set_page_config(page_title="Gestión de Puntos de Encuentro", layout="wide")
 
