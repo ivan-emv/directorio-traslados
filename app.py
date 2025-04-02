@@ -15,20 +15,23 @@ USUARIOS = {
 }
 
 # ---------------- SESIÓN ----------------
-for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "rol", "usuario"]:
+for key in ["modo", "edit_data", "ciudad_filtro", "puntos", "num_telefonos", "rol", "usuario", "logueado"]:
     if key not in st.session_state:
         if key == "puntos":
             st.session_state[key] = None
         elif key == "num_telefonos":
             st.session_state[key] = 1
+        elif key == "logueado":
+            st.session_state[key] = False
         else:
-            st.session_state[key] = None if key in ["edit_data", "ciudad_filtro", "usuario", "rol"] else "nuevo"
+            st.session_state[key] = None
 
 # ---------------- FIREBASE ----------------
 db = init_firestore()
 
 # ---------------- LOGIN ----------------
 st.title("🧭 Gestión de Puntos de Encuentro - Departamento de Traslados")
+
 if st.session_state["rol"] != "admin":
     with st.expander("🔐 Iniciar sesión como Administrador"):
         usuario = st.text_input("Usuario")
@@ -37,11 +40,16 @@ if st.session_state["rol"] != "admin":
             if usuario in USUARIOS and USUARIOS[usuario]["password"] == password:
                 st.session_state["rol"] = USUARIOS[usuario]["rol"]
                 st.session_state["usuario"] = usuario
-                st.success("✅ Acceso concedido como administrador.")
-                st.experimental_rerun()
+                st.session_state["logueado"] = True
             else:
                 st.error("❌ Usuario o contraseña incorrectos.")
 
+# Rerun seguro si el usuario se acaba de loguear
+if st.session_state.get("logueado"):
+    st.session_state["logueado"] = False
+    st.experimental_rerun()
+
+# Mensaje de sesión activa
 if st.session_state["rol"] == "admin":
     st.success(f"🔓 Sesión iniciada como **{st.session_state['usuario']}** (Administrador)")
 else:
